@@ -1,7 +1,7 @@
 const CACHE_NAME = 'interval-timer-v1';
 const urlsToCache = [
   './',
-  './index2.html',
+  './index.html',
   './PPPP.mp3',
   './manifest.json',
   './icon-192.png',
