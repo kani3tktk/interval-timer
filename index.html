@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インターバルタイマー</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service worker registered.', reg))
+                    .catch(err => console.error('Service worker registration failed:', err));
+            });
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            margin: 0;
+            color: #333;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            font-size: 2em;
+        }
+
+        .settings {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #e8f0fe;
+            border-radius: 8px;
+        }
+
+        .setting-item {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            /* flex-wrap: wrap; /* 小さい画面での折り返し - これを削除または後でnowrapに変更 */
+        }
+
+        .setting-item label {
+            font-weight: bold;
+            color: #555;
+            flex-basis: 100px; /* ラベルの幅を固定 */
+            text-align: right;
+            white-space: nowrap; /* ラベルの改行を防ぐ */
+        }
+
+        .setting-item input[type="number"],
+        .setting-item select { /* select要素も対象に追加 */
+            width: 60px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        .timer-display {
+            margin-bottom: 30px;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .stage-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2980b9;
+            margin-bottom: 10px;
+        }
+
+        .countdown-text {
+            font-size: 4em;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 10px;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        .repetition-text {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .controls button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            margin: 0 10px;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .controls button:hover:not(:disabled) {
+            background-color: #2980b9;
+        }
+
+        .controls button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 25px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .setting-item {
+                /* flex-direction: column; を削除 */
+                /* align-items: flex-start; を削除 */
+                flex-wrap: nowrap; /* 強制的に改行しない */
+                justify-content: center; /* 中央寄せを維持 */
+                padding: 5px 0; /* 必要に応じてパディングを調整 */
+            }
+
+            .setting-item label {
+                text-align: right; /* ラベルを右寄せに保つ */
+                margin-bottom: 0; /* 不要なマージンを削除 */
+                flex-basis: auto; /* 自動調整に戻すか、適切な固定値を設定 */
+                min-width: 70px; /* ラベルの最小幅を設定し、はみ出しを防ぐ */
+            }
+
+            .countdown-text {
+                font-size: 3em;
+            }
+
+            .controls button {
+                padding: 10px 20px;
+                font-size: 1em;
+                margin-top: 10px;
+                width: 100%;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container">
+        <h1>インターバルタイマー</h1>
+
+        <div class="settings">
+            <div class="setting-item">
+                <label for="activeMinutes">アクティブ時間:</label><br>
+                <select id="activeMinutes">
+                    <script>
+                        [0, 1, 2, 3, 5, 10, 15, 20, 30].forEach(i => {
+                            document.write(`<option value="${i}" ${i===0 ? 'selected' : ''}>${i}分</option>`);
+                        });
+                    </script>
+                </select>
+                <select id="activeSeconds">
+                    <script>
+                        [0, 5, 10, 15, 20, 25, 30, 45, 59].forEach(i => {
+                            document.write(`<option value="${i}" ${i===0 ? 'selected' : ''}>${i}秒</option>`);
+                        });
+                    </script>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="restMinutes">休憩時間:</label>
+                <select id="restMinutes">
+                    <script>
+                        [0, 1, 2, 3, 5, 10, 15, 20, 30].forEach(i => {
+                            document.write(`<option value="${i}" ${i===0 ? 'selected' : ''}>${i}分</option>`);
+                        });
+                    </script>
+                </select>
+                <select id="restSeconds">
+                    <script>
+                        [0, 5, 10, 15, 20, 25, 30, 45, 59].forEach(i => {
+                            document.write(`<option value="${i}" ${i===0 ? 'selected' : ''}>${i}秒</option>`);
+                        });
+                    </script>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="repetitions">繰り返し回数:</label>
+                <select id="repetitions">
+                    <script>
+                        [3, 5, 10, 15, 20, 25, 30, 40, 50, 100].forEach(i => {
+                            document.write(`<option value="${i}" ${i===0 ? 'selected' : ''}>${i}回</option>`);
+                        });
+                    </script>
+                </select>
+            </div>
+        </div>
+
+        <div class="timer-display">
+            <p id="currentStage" class="stage-text">準備中...</p>
+            <div id="countdown" class="countdown-text">00:00</div>
+            <p id="repetitionCount" class="repetition-text">残り 0/0 回</p>
+        </div>
+
+        <div class="controls">
