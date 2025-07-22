@@ -223,3 +223,197 @@
         </div>
 
         <div class="controls">
+            <button id="startButton">スタート</button>
+            <button id="pauseButton" disabled>一時停止</button>
+            <button id="resetButton">リセット</button>
+        </div>
+    </div>
+
+   <audio id="bellSound" src="PPPP.mp3"></audio>
+
+    
+
+</body>
+</html>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const activeMinutesInput = document.getElementById('activeMinutes');
+            const activeSecondsInput = document.getElementById('activeSeconds');
+            const restMinutesInput = document.getElementById('restMinutes');
+            const restSecondsInput = document.getElementById('restSeconds');
+            const repetitionsInput = document.getElementById('repetitions');
+
+            const startButton = document.getElementById('startButton');
+            const pauseButton = document.getElementById('pauseButton');
+            const resetButton = document.getElementById('resetButton');
+
+            const currentStageDisplay = document.getElementById('currentStage');
+            const countdownDisplay = document.getElementById('countdown');
+            const repetitionCountDisplay = document.getElementById('repetitionCount');
+            const bellSound = document.getElementById('bellSound');
+            bellSound.volume = 1;
+            bellSound.muted = false;
+
+            let timerInterval;
+            let totalSeconds;
+            let isPaused = false;
+            let currentRepetition = 0;
+            let maxRepetitions = 0;
+            let isResting = false; // trueなら休憩時間, falseならアクティブ時間
+
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+            }
+
+            function playBellSound() {
+                bellSound.currentTime = 0; // 再生位置を最初に戻す
+                bellSound.play().catch(e => console.error("Failed to play sound:", e));
+            }
+
+            function updateDisplay() {
+                countdownDisplay.textContent = formatTime(totalSeconds);
+                repetitionCountDisplay.textContent = `残り ${currentRepetition}/${maxRepetitions} 回`;
+
+                if (isResting) {
+                    currentStageDisplay.textContent = '休憩';
+                    currentStageDisplay.style.color = '#27ae60'; // 緑色
+                } else {
+                    currentStageDisplay.textContent = 'アクティブ';
+                    currentStageDisplay.style.color = '#e74c3c'; // 赤色
+                }
+
+                if (totalSeconds <= 5 && totalSeconds > 0) {
+                    countdownDisplay.style.color = '#f39c12'; // オレンジ色（残り少ない時に）
+                } else if (isResting) {
+                    countdownDisplay.style.color = '#27ae60'; // 休憩中は緑色
+                } else {
+                    countdownDisplay.style.color = '#e74c3c'; // アクティブ中は赤色
+                }
+            }
+
+            function startTimer() {
+                // playBellSound();
+                if (!isPaused) { // ポーズからの再開でなければ、初期設定を読み込む
+                    const activeTime = parseInt(activeMinutesInput.value) * 60 + parseInt(activeSecondsInput.value);
+                    const restTime = parseInt(restMinutesInput.value) * 60 + parseInt(restSecondsInput.value);
+                    maxRepetitions = parseInt(repetitionsInput.value);
+
+                    if (activeTime <= 0 && restTime <= 0) {
+                        alert('アクティブ時間または休憩時間を設定してください。');
+                        return;
+                    }
+                    if (maxRepetitions <= 0) {
+                        alert('繰り返し回数は1回以上に設定してください。');
+                        return;
+                    }
+
+                    currentRepetition = 1;
+                    isResting = false;
+                    totalSeconds = activeTime;
+                    updateDisplay(); // 初期表示
+                }
+
+                startButton.disabled = true;
+                pauseButton.disabled = false;
+                resetButton.disabled = false;
+
+                // 設定入力欄を無効化
+                activeMinutesInput.disabled = true;
+                activeSecondsInput.disabled = true;
+                restMinutesInput.disabled = true;
+                restSecondsInput.disabled = true;
+                repetitionsInput.disabled = true;
+
+
+                timerInterval = setInterval(() => {
+                    totalSeconds--;
+                    updateDisplay();
+
+                    if (totalSeconds <= 0) {
+                        playBellSound();
+                        if (isResting) {
+                            // 休憩時間終了
+                            currentRepetition++;
+                            if (currentRepetition <= maxRepetitions) {
+                                isResting = false;
+                                totalSeconds = parseInt(activeMinutesInput.value) * 60 + parseInt(activeSecondsInput.value);
+                            } else {
+                                // 全ての繰り返しが終了
+                                clearInterval(timerInterval);
+                                countdownDisplay.textContent = "完了！";
+                                currentStageDisplay.textContent = "お疲れ様でした！";
+                                startButton.disabled = false;
+                                pauseButton.disabled = true;
+                                resetButton.disabled = false;
+                                isPaused = false; // 状態をリセット
+                                // 設定入力欄を有効化
+                                activeMinutesInput.disabled = false;
+                                activeSecondsInput.disabled = false;
+                                restMinutesInput.disabled = false;
+                                restSecondsInput.disabled = false;
+                                repetitionsInput.disabled = false;
+                                return;
+                            }
+                        } else {
+                            // アクティブ時間終了
+                            isResting = true;
+                            totalSeconds = parseInt(restMinutesInput.value) * 60 + parseInt(restSecondsInput.value);
+                        }
+                    }
+                }, 1000);
+            }
+
+            function pauseTimer() {
+                clearInterval(timerInterval);
+                isPaused = true;
+                startButton.disabled = false;
+                pauseButton.disabled = true;
+                currentStageDisplay.textContent = '一時停止中';
+                currentStageDisplay.style.color = '#888';
+            }
+
+            function resetTimer() {
+                clearInterval(timerInterval);
+                isPaused = false;
+                totalSeconds = 0;
+                currentRepetition = 0;
+                maxRepetitions = 0;
+                isResting = false;
+
+                countdownDisplay.textContent = "00:00";
+                currentStageDisplay.textContent = "待機中...";
+                repetitionCountDisplay.textContent = "残り 0/0 回";
+                countdownDisplay.style.color = '#e74c3c'; // デフォルトの色に戻す
+
+                startButton.disabled = false;
+                pauseButton.disabled = true;
+                resetButton.disabled = false; // リセットボタンは常に押せるようにする、もしくは無効化
+
+                // 設定入力欄を有効化
+                activeMinutesInput.disabled = false;
+                activeSecondsInput.disabled = false;
+                restMinutesInput.disabled = false;
+                restSecondsInput.disabled = false;
+                repetitionsInput.disabled = false;
+            }
+
+            startButton.addEventListener('click', startTimer);
+                bellSound.play().then(() => {
+                bellSound.pause();
+                bellSound.currentTime = 0;
+                }).catch(() => {
+                // 自動再生制限に備えて無音で初回再生
+                });
+                startTimer();
+            pauseButton.addEventListener('click', pauseTimer);
+            resetButton.addEventListener('click', resetTimer);
+
+            // 初期表示設定
+            resetTimer(); // ページロード時に初期状態にする
+        });
+    </script>
+</body>
+</html>
